@@ -1,56 +1,60 @@
 import { useEffect, useState } from "react";
-import { FaSearch } from "react-icons/fa";
+import InfiniteScroll from "react-infinite-scroll-component";
 import Photo from "./component/Photo";
 
 const clientId = `?client_id=${process.env.REACT_APP_ACCESS_KEY}`;
 const mainUrl = "https://api.unsplash.com/photos/";
-const searchUrl = "https://api.unsplash.com/search/photos";
-function App() {
-  const [loading, setLoading] = useState(false);
-  const [photos, setPhotos] = useState([]);
 
-  const fetchImages = async () => {
-    let url;
-    url = `${mainUrl}${clientId}`;
-    try {
-      setLoading(true);
-      const response = await fetch(`${url}`);
-      const data = await response.json();
-      setPhotos(data);
-      setLoading(false);
-    } catch (error) {
-      console.log(error);
-      setLoading(false);
-    }
-  };
+function App() {
+  const [photos, setPhotos] = useState([]);
+  const [page, setPage] = useState(2);
+  const [more, setMore] = useState(true);
+
+  const urlPage = `&page=${page}`;
 
   useEffect(() => {
-    fetchImages();
+    const getPhotos = async () => {
+      const response = await fetch(`${mainUrl}${clientId}&page=1`);
+      const data = await response.json();
+      setPhotos(data);
+    };
+    getPhotos();
   }, []);
+  console.log(photos);
 
-  const handleSubmit = (e) => {
-    e.prevent.Default();
+  const fetchPhotos = async () => {
+    const response = await fetch(`${mainUrl}${clientId}${urlPage}`);
+    const data = await response.json();
+    return data;
+  };
+
+  const fetchData = async () => {
+    const photosFromServer = await fetchPhotos();
+
+    setPhotos([...photos, ...photosFromServer]);
+    if (photosFromServer.length === 0) {
+      setMore(false);
+    }
+    setPage(page + 1);
   };
 
   return (
     <main>
-      <section className="search">
-        <form className="search-form">
-          <input type="text" placeholder="search" className="form-input" />
-          <button type="submit" onClick={handleSubmit}>
-            submit
-            <FaSearch />
-          </button>
-        </form>
-      </section>
-      <section className="photos">
-        <div className="photos-center">
-          {photos.map(photo => (
-              <Photo key={photo.id} {...photo}/>
-            ) )}
-        </div>
-        {loading && <h2 className="loading">Loading...</h2> }
-      </section>
+      <InfiniteScroll
+        dataLength={photos.length}
+        next={fetchData}
+        hasMore={more}
+        loader={<h2 className="loading">Loading...</h2>}
+        endMessage={<h2>the end</h2>}
+      >
+        <section className="photos">
+          <div className="photos-center">
+            {photos.map((photo) => (
+              <Photo key={photo.id} {...photo} />
+            ))}
+          </div>
+        </section>
+      </InfiniteScroll>
     </main>
   );
 }
